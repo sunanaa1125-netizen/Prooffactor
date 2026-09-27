@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sunanaa1125-netizen/Prooffactor/actions/workflows/ci.yml/badge.svg)](https://github.com/sunanaa1125-netizen/Prooffactor/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/Demo-Vercel%20Live-brightgreen)](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/)
-[![Tests](https://img.shields.io/badge/Tests-20%20passing-success)](docs/screenshots/tests.png)
+[![Tests](https://img.shields.io/badge/Tests-27%20passing-success)](docs/screenshots/tests.png)
 [![Compact](https://img.shields.io/badge/Compact-0.31.1-purple)](https://midnight.network)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -69,7 +69,7 @@ Midnight's hybrid privacy architecture is fundamental to ProofFactor. Below is a
 
 ---
 
-## Automated Test Suite (20 Passing Tests)
+## Automated Test Suite (27 Passing Tests)
 
 ProofFactor includes comprehensive automated test coverage spanning in-memory contract simulator tests (testing Compact 0.31.1 circuits) and frontend/domain state-machine tests.
 
@@ -79,7 +79,7 @@ ProofFactor includes comprehensive automated test coverage spanning in-memory co
 
 ```text
 ======================================================================
- Test Summary: 4 passed, 4 test files | 20 passed, 20 tests total
+ Test Summary: 4 passed, 4 test files | 27 passed, 27 tests total
 ======================================================================
   ✓ app: src/domain/invoice.test.ts (6 tests)
   ✓ app: src/domain/workflow.test.ts (4 tests)
@@ -92,7 +92,7 @@ ProofFactor includes comprehensive automated test coverage spanning in-memory co
 
 | Test Suite | File | Tests | Validates |
 |---|---|:---:|---|
-| **Contract Invariants** | `contract/src/prooffactor.test.ts` | 7 | Domain separation, unauthorized acceptance rejection, empty buyer rejection, supplier-control forgery rejection, stable nullifier double-financing rejection, financing lock expiry at deadline, happy-path lifecycle. |
+| **Contract Invariants** | `contract/src/prooffactor.test.ts` | 14 | Domain separation, unauthorized acceptance rejection, empty buyer rejection, supplier-control forgery rejection, stable nullifier double-financing rejection, financing lock expiry at deadline, happy-path lifecycle, buyer rejection, lender decline, payment settlement from accepted & financed states, role revocation, and negative transition guards, unauthorized acceptance rejection, empty buyer rejection, supplier-control forgery rejection, stable nullifier double-financing rejection, financing lock expiry at deadline, happy-path lifecycle. |
 | **Domain Logic** | `app/src/domain/invoice.test.ts` | 6 | Invoice hashing, salt derivation, commitment calculation, policy evaluation bounds, nullifier determinism. |
 | **Workflow State Machine** | `app/src/domain/workflow.test.ts` | 4 | Invalid transition guards, supplier/buyer/lender role isolation, state rollback on rejection. |
 | **User Interface** | `app/src/ui/App.test.tsx` | 3 | Role switching, wallet connector fallback, interactive proof drawer render. |
@@ -195,7 +195,7 @@ docker compose -f proof-server.yml down
 | Requirement | ProofFactor Status | Reference |
 |---|:---:|---|
 | **Fully functional dApp using Midnight's privacy model** | **Met** | Compact 0.31.1 (13 circuits) for private invoice commitments & ZK policy verification |
-| **Minimum 3 tests passing** | **Met** | **20 passed** (7 contract simulator tests + 13 app/domain tests) |
+| **Minimum 3 tests passing** | **Met** | **20 passed** (14 contract simulator tests + 13 app/domain tests) |
 | **CI/CD pipeline running** | **Met** | [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) with badge linked |
 | **Approved idea from idea list** | **Met** | Private B2B Invoice Verifier / Smart Compliance & Financing |
 | **Minimum 10 meaningful commits** | **Met** | **24+ conventional commits** in repository history |

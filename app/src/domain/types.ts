@@ -29,6 +29,13 @@ export interface Invoice {
   updatedAt: string;
   policyId: string | null;
   proofVerified: boolean;
+  txHash: string;
+  blockHeight: number;
+  timestamp: number;
+  dustFee: number;
+  nightFee: number;
+  salt: string;
+  buyerNullifierNonce?: string;
 }
 
 export interface Policy {
@@ -56,6 +63,8 @@ export interface ActivityItem {
   invoiceAlias: string;
   message: string;
   timestamp: string;
+  txHash?: string;
+  blockHeight?: number;
 }
 
 export interface RegisteredUser {
@@ -77,6 +86,18 @@ export interface TransactionAudit {
   action: string;
   timestamp: string;
   demo: boolean;
+  txHash?: string;
+  blockHeight?: number;
+}
+
+export interface TransactionReceipt {
+  txHash: string;
+  blockHeight: number;
+  timestamp: number;
+  circuitName: string;
+  dustFee: number;
+  nightFee: number;
+  status: 'CONFIRMED' | 'PENDING' | 'FAILED';
 }
 
 export interface NewInvoiceInput {

@@ -60,7 +60,11 @@ export function RegisterInvoiceDialog({ open, onClose, onSubmit }: Props) {
             <div><PrivacyTag level="LOCAL ONLY" /><span>Amount, dates, buyer alias and canonical invoice fields</span></div>
             <div><PrivacyTag level="PUBLIC ON-CHAIN" /><span>Commitment, lifecycle state and routing metadata</span></div>
           </div>
-          <footer className="dialog__footer"><button type="button" className="button button--secondary" onClick={onClose}>Cancel</button><button className="button button--primary" type="submit">Create demo commitment</button></footer>
+          <footer className="dialog__footer">
+            <button type="button" className="button button--secondary" onClick={() => setForm({ alias: 'Apex-42', buyerAlias: 'Meridian Works', amount: '350000.00', currency: 'USD', dueDate: '2026-11-30' })}>Fill sample</button>
+            <button type="button" className="button button--secondary" onClick={onClose}>Cancel</button>
+            <button className="button button--primary" type="submit">Create commitment</button>
+          </footer>
         </form>
       </section>
     </div>

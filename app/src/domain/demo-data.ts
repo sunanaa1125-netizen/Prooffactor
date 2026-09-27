@@ -1,4 +1,22 @@
-import type { ActivityItem, Invoice, Policy, TransactionStage } from './types';
+import type { ActivityItem, Invoice, InvoiceStatus, Policy, Role, TransactionStage } from './types';
+
+export const roleLabels: Record<Role, string> = {
+  supplier: 'Supplier',
+  buyer: 'Buyer',
+  lender: 'Lender',
+  viewer: 'Public viewer',
+};
+
+export const statusLabels: Record<InvoiceStatus, string> = {
+  PROPOSED: 'Proposed',
+  ACCEPTED: 'Accepted',
+  PENDING_FINANCING: 'Pending financing',
+  FINANCED_CONFIRMED: 'Financed',
+  PAID: 'Paid',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};
 
 export const demoInvoices: Invoice[] = [
   {
@@ -6,8 +24,8 @@ export const demoInvoices: Invoice[] = [
     alias: 'Harbor-17',
     supplierAlias: 'Northstar Supply',
     buyerAlias: 'Juniper Works',
-    commitment: '0x7a3c5d8f224af6b491e2',
-    nullifier: '0x50e18d7a20bc44c9',
+    commitment: '0x7a3c5d8f224af6b491e2b8c9d0e1f2a3456789abcdef0123456789abcdef0123',
+    nullifier: '0x50e18d7a20bc44c9f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4',
     status: 'ACCEPTED',
     currency: 'USD',
     amountMinor: 4_280_000,
@@ -16,14 +34,21 @@ export const demoInvoices: Invoice[] = [
     updatedAt: '12 min ago',
     policyId: null,
     proofVerified: false,
+    txHash: '0x4f8a12e9b3d7c5a1f09876543210fedcba9876543210fedcba9876543210fedc',
+    blockHeight: 842105,
+    timestamp: Date.now() - 720000,
+    dustFee: 850,
+    nightFee: 0.0042,
+    salt: '0x8f224af6b491e2b8c9d0e1f2a3456789abcdef0123456789abcdef01237a3c5d',
+    buyerNullifierNonce: '0x12b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3',
   },
   {
     id: 'cedar-08',
     alias: 'Cedar-08',
     supplierAlias: 'Northstar Supply',
     buyerAlias: 'Atlas Retail',
-    commitment: '0x19bd990ab6e9f442',
-    nullifier: '0x88d017b4f2cc91ad',
+    commitment: '0x19bd990ab6e9f442c7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+    nullifier: '0x88d017b4f2cc91adc9d0e1f2a3456789abcdef0123456789abcdef012319bd99',
     status: 'PENDING_FINANCING',
     currency: 'USD',
     amountMinor: 7_850_000,
@@ -32,13 +57,20 @@ export const demoInvoices: Invoice[] = [
     updatedAt: '2 hr ago',
     policyId: 'greenline-v3',
     proofVerified: true,
+    txHash: '0x9b2a7d4e1f8c3a5b069876543210fedcba9876543210fedcba9876543210fedc',
+    blockHeight: 842088,
+    timestamp: Date.now() - 7200000,
+    dustFee: 1250,
+    nightFee: 0.0058,
+    salt: '0xc7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c019bd990ab6e9f442',
+    buyerNullifierNonce: '0x34b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5',
   },
   {
     id: 'tide-24',
     alias: 'Tide-24',
     supplierAlias: 'Northstar Supply',
     buyerAlias: 'Copper & Co.',
-    commitment: '0x640ae120d4b8af77',
+    commitment: '0x640ae120d4b8af77e1f2a3456789abcdef0123456789abcdef0123640ae120d4',
     nullifier: null,
     status: 'PROPOSED',
     currency: 'EUR',
@@ -48,6 +80,12 @@ export const demoInvoices: Invoice[] = [
     updatedAt: 'Yesterday',
     policyId: null,
     proofVerified: false,
+    txHash: '0x2c5e8a1d4f7b0c3e9876543210fedcba9876543210fedcba9876543210fedcba',
+    blockHeight: 842060,
+    timestamp: Date.now() - 86400000,
+    dustFee: 420,
+    nightFee: 0.0031,
+    salt: '0xaf77e1f2a3456789abcdef0123456789abcdef0123640ae120d4b8640ae120d4',
   },
 ];
 
@@ -82,32 +120,55 @@ export const demoPolicies: Policy[] = [
 ];
 
 export const initialActivity: ActivityItem[] = [
-  { id: 'a1', invoiceAlias: 'Harbor-17', message: 'Buyer acceptance finalized', timestamp: '12 min ago' },
-  { id: 'a2', invoiceAlias: 'Cedar-08', message: 'Private policy proof verified', timestamp: '2 hr ago' },
-  { id: 'a3', invoiceAlias: 'Tide-24', message: 'Commitment registered', timestamp: 'Yesterday' },
+  {
+    id: 'a1',
+    invoiceAlias: 'Harbor-17',
+    message: 'Buyer acceptance finalized on Midnight ledger',
+    timestamp: '12 min ago',
+    txHash: '0x4f8a12e9b3d7c5a1f09876543210fedcba9876543210fedcba9876543210fedc',
+    blockHeight: 842105,
+  },
+  {
+    id: 'a2',
+    invoiceAlias: 'Cedar-08',
+    message: 'Zero-knowledge policy proof verified by contract',
+    timestamp: '2 hr ago',
+    txHash: '0x9b2a7d4e1f8c3a5b069876543210fedcba9876543210fedcba9876543210fedc',
+    blockHeight: 842088,
+  },
+  {
+    id: 'a3',
+    invoiceAlias: 'Tide-24',
+    message: 'Shielded invoice commitment registered',
+    timestamp: 'Yesterday',
+    txHash: '0x2c5e8a1d4f7b0c3e9876543210fedcba9876543210fedcba9876543210fedcba',
+    blockHeight: 842060,
+  },
 ];
 
 export const transactionStages: TransactionStage[] = [
-  { id: 'proof', label: 'Generate proof', description: 'Check eligibility without disclosing invoice values.', state: 'waiting' },
-  { id: 'wallet', label: 'Approve in wallet', description: 'Review public effects and authorize the transaction.', state: 'waiting' },
-  { id: 'submit', label: 'Submit transaction', description: 'Publish proof output and the pending request lock.', state: 'waiting' },
-  { id: 'finality', label: 'Await finality', description: 'Confirm inclusion on Midnight Preprod.', state: 'waiting' },
+  {
+    id: 'proof',
+    label: 'Generate private proof',
+    description: 'Compile Compact ZK witness locally without revealing invoice amount, due date, or counterparty secrets.',
+    state: 'waiting',
+  },
+  {
+    id: 'wallet',
+    label: 'Wallet authorization',
+    description: 'Sign dual-state transaction envelope via Midnight DApp connector wallet.',
+    state: 'waiting',
+  },
+  {
+    id: 'submit',
+    label: 'Mempool submission',
+    description: 'Broadcast transaction proof and public commitment to Midnight Preprod network.',
+    state: 'waiting',
+  },
+  {
+    id: 'finality',
+    label: 'Ledger finality',
+    description: 'Block inclusion confirmed and nullifier verified on-chain.',
+    state: 'waiting',
+  },
 ];
-
-export const roleLabels = {
-  supplier: 'Supplier',
-  buyer: 'Buyer',
-  lender: 'Lender',
-  viewer: 'Public viewer',
-} as const;
-
-export const statusLabels = {
-  PROPOSED: 'Proposed',
-  ACCEPTED: 'Accepted',
-  PENDING_FINANCING: 'Pending financing',
-  FINANCED_CONFIRMED: 'Financed confirmed',
-  PAID: 'Paid',
-  REJECTED: 'Rejected',
-  CANCELLED: 'Cancelled',
-  EXPIRED: 'Expired',
-} as const;

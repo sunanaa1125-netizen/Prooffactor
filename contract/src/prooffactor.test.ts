@@ -355,4 +355,131 @@ describe('ProofFactor Compact contract', () => {
     );
   });
 
+  it('allows an authorized buyer to reject a proposed invoice', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    const data = invoice(13);
+    const commitment = pureCircuits.deriveInvoiceCommitment(data);
+    const controlKey = pureCircuits.deriveSupplierControlKey(commitment, supplierControlSecret);
+    harness.call('registerInvoiceCommitment', supplierIdentity, [commitment, buyerIdentity, controlKey]);
+
+    expect(harness.publicState.invoices.lookup(commitment).status).toBe(InvoiceStatus.Proposed);
+
+    harness.call('rejectInvoice', buyerSecret, [commitment]);
+    expect(harness.publicState.invoices.lookup(commitment).status).toBe(InvoiceStatus.Rejected);
+  });
+
+  it('rejects unauthorized rejection of an invoice', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    const data = invoice(14);
+    const commitment = pureCircuits.deriveInvoiceCommitment(data);
+    const controlKey = pureCircuits.deriveSupplierControlKey(commitment, supplierControlSecret);
+    harness.call('registerInvoiceCommitment', supplierIdentity, [commitment, buyerIdentity, controlKey]);
+
+    const unauthorizedSecret = bytes(77);
+    expect(() =>
+      harness.call('rejectInvoice', unauthorizedSecret, [commitment]),
+    ).toThrow(/Only the authorized buyer/);
+  });
+
+  it('allows a lender to decline a pending financing request and returns status to accepted', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    harness.call('authorizeLender', adminSecret, [lenderIdentity]);
+    harness.call('registerPolicy', lenderSecret, [1n, policy()]);
+
+    const data = invoice(15);
+    const { commitment } = registerAndAccept(harness, data);
+    harness.call(
+      'requestFinancing',
+      supplierIdentity,
+      [commitment, 1n],
+      {
+        invoice: data,
+        supplierControlSecret,
+        buyerNullifierNonce,
+      },
+    );
+    expect(harness.publicState.invoices.lookup(commitment).status).toBe(InvoiceStatus.PendingFinancing);
+
+    harness.call('declineFinancing', lenderSecret, [commitment]);
+    expect(harness.publicState.invoices.lookup(commitment).status).toBe(InvoiceStatus.Accepted);
+  });
+
+  it('allows a buyer to mark an accepted or financed invoice as paid', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    harness.call('authorizeLender', adminSecret, [lenderIdentity]);
+    harness.call('registerPolicy', lenderSecret, [1n, policy()]);
+
+    // From Accepted directly to Paid
+    const data1 = invoice(16);
+    const first = registerAndAccept(harness, data1);
+    harness.call('markInvoicePaid', buyerSecret, [first.commitment]);
+    expect(harness.publicState.invoices.lookup(first.commitment).status).toBe(InvoiceStatus.Paid);
+
+    // From FinancedConfirmed to Paid
+    const data2 = invoice(17);
+    const second = registerAndAccept(harness, data2);
+    harness.call(
+      'requestFinancing',
+      supplierIdentity,
+      [second.commitment, 1n],
+      {
+        invoice: data2,
+        supplierControlSecret,
+        buyerNullifierNonce,
+      },
+    );
+    harness.call('confirmFinancing', lenderSecret, [second.commitment]);
+    expect(harness.publicState.invoices.lookup(second.commitment).status).toBe(InvoiceStatus.FinancedConfirmed);
+
+    harness.call('markInvoicePaid', buyerSecret, [second.commitment]);
+    expect(harness.publicState.invoices.lookup(second.commitment).status).toBe(InvoiceStatus.Paid);
+  });
+
+  it('rejects marking an invoice as paid from proposed state', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    const data = invoice(18);
+    const commitment = pureCircuits.deriveInvoiceCommitment(data);
+    const controlKey = pureCircuits.deriveSupplierControlKey(commitment, supplierControlSecret);
+    harness.call('registerInvoiceCommitment', supplierIdentity, [commitment, buyerIdentity, controlKey]);
+
+    expect(() =>
+      harness.call('markInvoicePaid', buyerSecret, [commitment]),
+    ).toThrow(/Invoice cannot be marked paid/);
+  });
+
+  it('allows an admin to revoke a buyer and rejects subsequent buyer actions', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeBuyer', adminSecret, [buyerIdentity]);
+    expect(harness.publicState.authorizedBuyers.member(buyerIdentity)).toBe(true);
+
+    harness.call('revokeBuyer', adminSecret, [buyerIdentity]);
+    expect(harness.publicState.authorizedBuyers.member(buyerIdentity)).toBe(false);
+
+    const data = invoice(19);
+    const commitment = pureCircuits.deriveInvoiceCommitment(data);
+    const controlKey = pureCircuits.deriveSupplierControlKey(commitment, supplierControlSecret);
+    expect(() =>
+      harness.call('registerInvoiceCommitment', supplierIdentity, [commitment, buyerIdentity, controlKey]),
+    ).toThrow(/Buyer identity is not authorized/);
+  });
+
+  it('allows an admin to revoke a lender and rejects subsequent policy registration', () => {
+    const harness = new Harness(adminSecret);
+    harness.call('authorizeLender', adminSecret, [lenderIdentity]);
+    expect(harness.publicState.authorizedLenders.member(lenderIdentity)).toBe(true);
+
+    harness.call('revokeLender', adminSecret, [lenderIdentity]);
+    expect(harness.publicState.authorizedLenders.member(lenderIdentity)).toBe(false);
+
+    expect(() =>
+      harness.call('registerPolicy', lenderSecret, [99n, policy()]),
+    ).toThrow(/Lender identity is not authorized/);
+  });
+
 });
+
