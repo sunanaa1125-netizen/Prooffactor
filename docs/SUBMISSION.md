@@ -61,13 +61,13 @@ Midnight is necessary because the application needs shared, verifiable state cha
 
 ## Links and release evidence
 
-- Repository: https://github.com/sujanm1125-ux/ProffFactor
+- Repository: https://github.com/sunanaa1125-netizen/Prooffactor
 - Live frontend: https://proff-factor-5674jjdnn-sm-17fa.vercel.app/
 - Contract address: Pending Preprod deployment
 - Deployment transaction: Pending Preprod deployment
 - End-to-end Lace transaction: Pending funded Preprod wallet
 - Demo video: Pending recording
-- Live evidence screenshots: [landing.png](screenshots/landing.png) and [workspace.png](screenshots/workspace.png)
+- Live evidence screenshots: [landing.png](screenshots/landing.png), [workspace.png](screenshots/workspace.png), and [tests.png](screenshots/tests.png)
 
 
 ## Honest limitations
