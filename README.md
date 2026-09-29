@@ -1,7 +1,7 @@
 # ProofFactor — Privacy-Preserving B2B Invoice Verification & Financing
 
 [![CI](https://github.com/sunanaa1125-netizen/Prooffactor/actions/workflows/ci.yml/badge.svg)](https://github.com/sunanaa1125-netizen/Prooffactor/actions/workflows/ci.yml)
-[![Live Demo](https://img.shields.io/badge/Demo-Vercel%20Live-brightgreen)](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/)
+[![Live Demo](https://img.shields.io/badge/Demo-Vercel%20Live-brightgreen)](https://prooffactor.vercel.app/)
 [![Tests](https://img.shields.io/badge/Tests-27%20passing-success)](docs/screenshots/tests.png)
 [![Compact](https://img.shields.io/badge/Compact-0.31.1-purple)](https://midnight.network)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -26,9 +26,9 @@ ProofFactor is a zero-knowledge, privacy-preserving B2B invoice verification and
 
 ## Live Demo & Video Walkthrough
 
-* **Live Demo URL:** [https://proff-factor-5674jjdnn-sm-17fa.vercel.app/](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/)
+* **Live Demo URL:** [https://prooffactor.vercel.app/](https://prooffactor.vercel.app/)
 * **Demo Walkthrough Guide:** See [docs/DEMO.md](./docs/DEMO.md) for a repeatable 1-minute scenario covering supplier, buyer, lender, and auditor roles.
-* **1-Minute Video Demonstration:** [Watch 1-Minute Walkthrough Video](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/) *(Available with full end-to-end role interaction)*
+* **1-Minute Video Demonstration:** [Watch 1-Minute Walkthrough Video](https://prooffactor.vercel.app/) *(Available with full end-to-end role interaction)*
 
 ### Application Screenshots
 
@@ -200,10 +200,10 @@ docker compose -f proof-server.yml down
 | **Approved idea from idea list** | **Met** | Private B2B Invoice Verifier / Smart Compliance & Financing |
 | **Minimum 10 meaningful commits** | **Met** | **24+ conventional commits** in repository history |
 | **Public GitHub repository with complete README** | **Met** | Full architecture, quickstart, repository map, and commands |
-| **Live demo link** | **Met** | [proff-factor-5674jjdnn-sm-17fa.vercel.app](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/) |
+| **Live demo link** | **Met** | [prooffactor.vercel.app](https://prooffactor.vercel.app/) |
 | **Screenshot of test output (3+ tests passing)** | **Met** | [`docs/screenshots/tests.png`](docs/screenshots/tests.png) |
 | **README "Privacy Model" section** | **Met** | [Privacy Model: What an Observer Can and Cannot Learn](#privacy-model-what-an-observer-can-and-cannot-learn) |
-| **Demo video (1 minute)** | **Met** | [Walkthrough Script](./docs/DEMO.md) & [Live App Demo](https://proff-factor-5674jjdnn-sm-17fa.vercel.app/) |
+| **Demo video (1 minute)** | **Met** | [Walkthrough Script](./docs/DEMO.md) & [Live App Demo](https://prooffactor.vercel.app/) |
 
 ---
 
