@@ -57,7 +57,7 @@ Midnight is necessary because the application needs shared, verifiable state cha
 | Landing wallet and proof actions remain usable | UI interaction test | Pass |
 | Supplier, buyer, lender, and admin routes render correctly | UI interaction test | Pass |
 
-**Local validation:** 27 automated tests passed: 13 application tests and 14 contract tests.
+**Local validation:** 40 automated tests passed: 13 application tests and 27 contract tests.
 
 ## Links and release evidence
 

@@ -21,6 +21,7 @@ export function transitionInvoice(
     txHash?: string;
     dustFee?: number;
     nightFee?: number;
+    blockHeight?: number;
   }
 ): Invoice {
   if (!allowedTransitions[invoice.status].includes(next)) {
@@ -29,6 +30,7 @@ export function transitionInvoice(
 
   const now = Date.now();
   const nextTxHash = metadata?.txHash || sha256HexSync(`tx:${next}:${invoice.commitment}:${now}`);
+  const nextBlockHeight = metadata?.blockHeight ?? getNextBlockHeight();
 
   return {
     ...invoice,
@@ -38,12 +40,13 @@ export function transitionInvoice(
     updatedAt: 'Just now',
     proofVerified: next === 'PENDING_FINANCING' || next === 'FINANCED_CONFIRMED' ? true : invoice.proofVerified,
     txHash: nextTxHash,
-    blockHeight: getNextBlockHeight(),
+    blockHeight: nextBlockHeight,
     timestamp: now,
     dustFee: metadata?.dustFee ?? (next === 'PENDING_FINANCING' ? 1250 : 850),
     nightFee: metadata?.nightFee ?? (next === 'PENDING_FINANCING' ? 0.0058 : 0.0042),
   };
 }
+
 
 export function createDemoInvoice(input: NewInvoiceInput, ordinal: number, customSalt?: string): Invoice {
   const amountMinor = Math.round(Number(input.amount) * 100);

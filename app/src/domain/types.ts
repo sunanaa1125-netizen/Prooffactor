@@ -62,10 +62,11 @@ export interface ActivityItem {
   id: string;
   invoiceAlias: string;
   message: string;
-  timestamp: string;
+  timestamp: string | number;
   txHash?: string;
   blockHeight?: number;
 }
+
 
 export interface RegisteredUser {
   id: string;

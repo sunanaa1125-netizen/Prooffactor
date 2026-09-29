@@ -4,4 +4,10 @@ services:
     command: ["midnight-proof-server", "-v"]
     ports:
       - "127.0.0.1:6300:6300"
+    volumes:
+      - proof-server-data:/root
     restart: unless-stopped
+
+volumes:
+  proof-server-data:
+

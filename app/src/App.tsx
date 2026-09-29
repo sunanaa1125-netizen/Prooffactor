@@ -28,10 +28,19 @@ import { TransactionDrawer } from './components/TransactionDrawer';
 import { WalletDialog } from './components/WalletDialog';
 import { demoPolicies, roleLabels, transactionStages } from './domain/demo-data';
 import { createDemoInvoice, isPolicyEligible, transitionInvoice } from './domain/demo-machine';
-import { deriveStableNullifier, formatHash, generateSecureSalt, generateTxHash, getExplorerUrl, getNextBlockHeight } from './domain/crypto';
+import { deriveStableNullifier, formatHash, formatRelativeTime, generateSecureSalt, generateTxHash, getExplorerUrl, getNextBlockHeight } from './domain/crypto';
 import { loadStoredActivity, loadStoredInvoices, resetStoredData, saveStoredActivity, saveStoredInvoices } from './domain/storage';
 import type { ActivityItem, Invoice, NewInvoiceInput, RegisteredUser, Role, Section, TransactionAudit, TransactionStage } from './domain/types';
-import { discoverInjectedWallets, saveRegisteredUser, saveTransactionAudit, type DiscoveredWallet, safeWalletLabel } from './lib/midnight/wallets';
+import {
+  discoverInjectedWallets,
+  connectAndValidateWallet,
+  saveRegisteredUser,
+  saveTransactionAudit,
+  type DiscoveredWallet,
+  type ConnectedWallet,
+  type WalletAccountInfo,
+  safeWalletLabel,
+} from './lib/midnight/wallets';
 
 const navItems: Array<{ id: Section; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -69,6 +78,8 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
   const [walletAddress, setWalletAddress] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [demoWallet, setDemoWallet] = useState(true);
+  const [connectedApi, setConnectedApi] = useState<ConnectedWallet | null>(null);
+  const [walletAccount, setWalletAccount] = useState<WalletAccountInfo | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState('Transaction progress');
   const [activeTxInvoice, setActiveTxInvoice] = useState<Invoice | null>(null);
@@ -86,16 +97,33 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
     saveStoredActivity(activity);
   }, [activity]);
 
-  const selectedInvoice = invoices.find((invoice) => invoice.id === selectedInvoiceId) ?? invoices[0] ?? null;
-  const acceptedCount = invoices.filter((invoice) => invoice.status === 'ACCEPTED').length;
-  const pendingCount = invoices.filter((invoice) => invoice.status === 'PENDING_FINANCING').length;
-  const actionableCount = role === 'supplier' ? acceptedCount : role === 'buyer' ? invoices.filter((invoice) => invoice.status === 'PROPOSED').length : role === 'lender' ? pendingCount : 0;
-
   const visibleInvoices = useMemo(() => {
-    if (role === 'buyer') return invoices.filter((invoice) => ['PROPOSED', 'ACCEPTED', 'REJECTED', 'PAID'].includes(invoice.status));
-    if (role === 'lender') return invoices.filter((invoice) => ['PENDING_FINANCING', 'FINANCED_CONFIRMED'].includes(invoice.status));
+    if (role === 'buyer') {
+      return invoices.filter((invoice) =>
+        ['PROPOSED', 'ACCEPTED', 'REJECTED', 'PENDING_FINANCING', 'FINANCED_CONFIRMED', 'PAID'].includes(invoice.status)
+      );
+    }
+    if (role === 'lender') {
+      return invoices.filter((invoice) =>
+        ['PENDING_FINANCING', 'FINANCED_CONFIRMED'].includes(invoice.status)
+      );
+    }
     return invoices;
   }, [invoices, role]);
+
+  const selectedInvoice =
+    visibleInvoices.find((invoice) => invoice.id === selectedInvoiceId) ?? visibleInvoices[0] ?? null;
+
+  const acceptedCount = invoices.filter((invoice) => invoice.status === 'ACCEPTED').length;
+  const pendingCount = invoices.filter((invoice) => invoice.status === 'PENDING_FINANCING').length;
+  const actionableCount =
+    role === 'supplier'
+      ? acceptedCount
+      : role === 'buyer'
+      ? invoices.filter((invoice) => invoice.status === 'PROPOSED').length
+      : role === 'lender'
+      ? pendingCount
+      : 0;
 
   function notify(message: string) {
     setToast(message);
@@ -126,6 +154,8 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
   async function chooseWallet(wallet: DiscoveredWallet | null, nextDisplayName: string) {
     setWalletOpen(false);
     if (!wallet) {
+      setConnectedApi(null);
+      setWalletAccount(null);
       setWalletLabel('Demo wallet (Preprod)');
       setWalletAddress('demo1zqqqq...preprod');
       setDisplayName(nextDisplayName);
@@ -135,21 +165,17 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       return;
     }
     try {
-      const connected = await wallet.connect('preprod');
+      const { walletApi, account } = await connectAndValidateWallet(wallet, 'preprod');
+      setConnectedApi(walletApi);
+      setWalletAccount(account);
       setWalletLabel(safeWalletLabel(wallet));
       setDisplayName(nextDisplayName);
-      
-      // Fix: Safely extract address string from API v4 object or string
-      const rawAddress = connected?.getUnshieldedAddress ? await connected.getUnshieldedAddress() : '';
-      const address = typeof rawAddress === 'object' && rawAddress !== null && 'unshieldedAddress' in rawAddress
-        ? (rawAddress as { unshieldedAddress: string }).unshieldedAddress
-        : String(rawAddress || '');
-        
-      setWalletAddress(address);
-      registerUser(nextDisplayName, safeWalletLabel(wallet), wallet.id, address, false);
+      setWalletAddress(account.unshieldedAddress);
+      registerUser(nextDisplayName, safeWalletLabel(wallet), wallet.id, account.unshieldedAddress, false);
       setDemoWallet(false);
-      notify(`${safeWalletLabel(wallet)} connected.`);
-    } catch {
+      notify(`${safeWalletLabel(wallet)} connected (${account.networkId}).`);
+    } catch (err) {
+      console.error('Wallet connection error:', err);
       notify('Wallet connection was cancelled or failed.');
     }
   }
@@ -175,8 +201,9 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
     setDrawerOpen(true);
     setStages(transactionStages.map((stage, index) => ({ ...stage, state: index === 0 ? 'active' : 'waiting' })));
 
+    const stageDelays = [1500, 850, 650, 1100];
     for (let index = 0; index < transactionStages.length; index += 1) {
-      await wait(500);
+      await wait(stageDelays[index] ?? 700);
       setStages((current) =>
         current.map((stage, stageIndex) => ({
           ...stage,
@@ -196,11 +223,12 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
     setSelectedInvoiceId(newInvoice.id);
     setActiveTxInvoice(newInvoice);
 
+    const now = Date.now();
     const newActivity: ActivityItem = {
       id: crypto.randomUUID(),
       invoiceAlias: newInvoice.alias,
       message: 'Committed to Midnight ledger with 32-byte salt',
-      timestamp: 'Just now',
+      timestamp: now,
       txHash: newInvoice.txHash,
       blockHeight: newInvoice.blockHeight,
     };
@@ -213,28 +241,33 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
   async function buyerDecision(accepted: boolean) {
     if (!selectedInvoice || selectedInvoice.status !== 'PROPOSED') return;
 
-    let updated = transitionInvoice(selectedInvoice, accepted ? 'ACCEPTED' : 'REJECTED');
-    if (accepted) {
-      const nonce = generateSecureSalt();
-      const nullifier = await deriveStableNullifier({
-        buyerAlias: selectedInvoice.buyerAlias,
-        invoiceCommitment: selectedInvoice.commitment,
-        nonce,
-      });
-      const txHash = await generateTxHash({
-        circuitName: 'acceptInvoice',
-        commitment: selectedInvoice.commitment,
-        sender: selectedInvoice.buyerAlias,
-        timestamp: Date.now(),
-      });
-      updated = {
-        ...updated,
+    const nonce = accepted ? generateSecureSalt() : undefined;
+    const nullifier = accepted
+      ? await deriveStableNullifier({
+          buyerAlias: selectedInvoice.buyerAlias,
+          invoiceCommitment: selectedInvoice.commitment,
+          nonce: nonce!,
+        })
+      : null;
+
+    const now = Date.now();
+    const txHash = await generateTxHash({
+      circuitName: accepted ? 'acceptInvoice' : 'rejectInvoice',
+      commitment: selectedInvoice.commitment,
+      sender: selectedInvoice.buyerAlias,
+      timestamp: now,
+    });
+
+    const blockHeight = getNextBlockHeight();
+
+    const updated: Invoice = {
+      ...transitionInvoice(selectedInvoice, accepted ? 'ACCEPTED' : 'REJECTED', {
         nullifier,
-        buyerNullifierNonce: nonce,
         txHash,
-        blockHeight: getNextBlockHeight(),
-      };
-    }
+        blockHeight,
+      }),
+      buyerNullifierNonce: nonce,
+    };
 
     await runTransactionStages(accepted ? 'Buyer Invoice Acceptance' : 'Invoice Rejection', updated);
 
@@ -246,7 +279,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       id: crypto.randomUUID(),
       invoiceAlias: updated.alias,
       message: msg,
-      timestamp: 'Just now',
+      timestamp: now,
       txHash: updated.txHash,
       blockHeight: updated.blockHeight,
     };
@@ -258,20 +291,22 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
   async function lenderDecision(confirmed: boolean) {
     if (!selectedInvoice || selectedInvoice.status !== 'PENDING_FINANCING') return;
 
+    const now = Date.now();
     const txHash = await generateTxHash({
       circuitName: confirmed ? 'confirmFinancing' : 'declineFinancing',
       commitment: selectedInvoice.commitment,
       sender: 'Lender',
-      timestamp: Date.now(),
+      timestamp: now,
     });
 
-    const updated = {
-      ...transitionInvoice(selectedInvoice, confirmed ? 'FINANCED_CONFIRMED' : 'ACCEPTED'),
+    const blockHeight = getNextBlockHeight();
+
+    const updated = transitionInvoice(selectedInvoice, confirmed ? 'FINANCED_CONFIRMED' : 'ACCEPTED', {
       txHash,
-      blockHeight: getNextBlockHeight(),
+      blockHeight,
       dustFee: confirmed ? 1450 : 600,
       nightFee: confirmed ? 0.0065 : 0.0028,
-    };
+    });
 
     await runTransactionStages(confirmed ? 'Lender Financing Confirmation' : 'Release Financing Lock', updated);
 
@@ -283,7 +318,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       id: crypto.randomUUID(),
       invoiceAlias: updated.alias,
       message: msg,
-      timestamp: 'Just now',
+      timestamp: now,
       txHash: updated.txHash,
       blockHeight: updated.blockHeight,
     };
@@ -301,21 +336,23 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       return;
     }
 
+    const now = Date.now();
     const txHash = await generateTxHash({
       circuitName: 'requestFinancing',
       commitment: invoice.commitment,
       sender: invoice.supplierAlias,
-      timestamp: Date.now(),
+      timestamp: now,
     });
 
-    const updated = {
-      ...transitionInvoice(invoice, 'PENDING_FINANCING'),
+    const blockHeight = getNextBlockHeight();
+
+    const updated = transitionInvoice(invoice, 'PENDING_FINANCING', {
       policyId,
       txHash,
-      blockHeight: getNextBlockHeight(),
+      blockHeight,
       dustFee: 1250,
       nightFee: 0.0058,
-    };
+    });
 
     await runTransactionStages('Zero-Knowledge Policy Verification', updated);
 
@@ -327,7 +364,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       id: crypto.randomUUID(),
       invoiceAlias: updated.alias,
       message: msg,
-      timestamp: 'Just now',
+      timestamp: now,
       txHash: updated.txHash,
       blockHeight: updated.blockHeight,
     };
@@ -339,20 +376,22 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
   async function markPaid() {
     if (!selectedInvoice || !['ACCEPTED', 'FINANCED_CONFIRMED'].includes(selectedInvoice.status)) return;
 
+    const now = Date.now();
     const txHash = await generateTxHash({
       circuitName: 'markInvoicePaid',
       commitment: selectedInvoice.commitment,
       sender: selectedInvoice.buyerAlias,
-      timestamp: Date.now(),
+      timestamp: now,
     });
 
-    const updated = {
-      ...transitionInvoice(selectedInvoice, 'PAID'),
+    const blockHeight = getNextBlockHeight();
+
+    const updated = transitionInvoice(selectedInvoice, 'PAID', {
       txHash,
-      blockHeight: getNextBlockHeight(),
+      blockHeight,
       dustFee: 500,
       nightFee: 0.003,
-    };
+    });
 
     await runTransactionStages('Invoice Settlement Finality', updated);
 
@@ -364,7 +403,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
       id: crypto.randomUUID(),
       invoiceAlias: updated.alias,
       message: msg,
-      timestamp: 'Just now',
+      timestamp: now,
       txHash: updated.txHash,
       blockHeight: updated.blockHeight,
     };
@@ -388,6 +427,21 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
     <div className="app-shell">
       <header className="topbar">
         <button className="brand-button" onClick={() => setSection('overview')}><BrandMark /></button>
+        <a
+          href="/"
+          style={{
+            textDecoration: 'none',
+            color: 'var(--muted, #66706a)',
+            fontSize: '12px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            marginRight: 'auto',
+            marginLeft: '14px',
+          }}
+        >
+          ← Landing page
+        </a>
         <div className="topbar__actions">
           <span className="network-pill"><span />PREPROD</span>
           <span className="privacy-workspace"><EyeOff size={14} />PRIVATE WORKSPACE</span>
@@ -486,6 +540,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
               onBuyerDecision={buyerDecision}
               onLenderDecision={lenderDecision}
               onMarkPaid={markPaid}
+              onRequestFinancing={(invoice) => requestFinancing(invoice)}
               onCopy={() => {
                 if (selectedInvoice) void navigator.clipboard?.writeText(selectedInvoice.commitment);
                 notify('Public commitment copied.');
@@ -526,7 +581,7 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
                       </code>
                     )}
                   </div>
-                  <time>{item.timestamp}</time>
+                  <time>{formatRelativeTime(item.timestamp)}</time>
                 </article>
               ))}
             </div>
@@ -538,8 +593,24 @@ export function App({ initialSection = 'overview' }: { initialSection?: Section 
               <strong>Preprod · Synthetic data only.</strong> ProofFactor demonstrates verification and lifecycle state transitions on the Midnight Network without exposing private commercial secrets.
             </p>
           </div>
+
         </main>
       </div>
+
+      <nav className="mobile-nav" aria-label="Mobile navigation">
+        {navItems.slice(0, 4).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={section === item.id ? 'active' : ''}
+            onClick={() => setSection(item.id)}
+            aria-label={item.label}
+          >
+            <item.icon size={19} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       <RegisterInvoiceDialog open={registerOpen} onClose={() => setRegisterOpen(false)} onSubmit={registerInvoice} />
       <WalletDialog open={walletOpen} wallets={wallets} onClose={() => setWalletOpen(false)} onSelect={chooseWallet} />
@@ -692,6 +763,7 @@ function EvidencePanel({
   onBuyerDecision,
   onLenderDecision,
   onMarkPaid,
+  onRequestFinancing,
   onCopy,
 }: {
   invoice: Invoice | null;
@@ -699,6 +771,7 @@ function EvidencePanel({
   onBuyerDecision: (accepted: boolean) => void;
   onLenderDecision: (confirmed: boolean) => void;
   onMarkPaid: () => void;
+  onRequestFinancing?: (invoice: Invoice) => void;
   onCopy: () => void;
 }) {
   if (!invoice) return <aside className="panel evidence-panel empty-state">Select an invoice to inspect its public evidence.</aside>;
@@ -771,6 +844,11 @@ function EvidencePanel({
           <strong>Disclosure boundary:</strong> Workspace aliases are local labels. Public state contains a 32-byte commitment, stable nullifier, and lifecycle state—not private invoice numbers or commercial margins.
         </p>
         <div className="evidence-actions">
+          {role === 'supplier' && invoice.status === 'ACCEPTED' && (
+            <button className="button button--primary" onClick={() => onRequestFinancing?.(invoice)}>
+              Check policy & request financing
+            </button>
+          )}
           {role === 'buyer' && invoice.status === 'PROPOSED' && (
             <>
               <button className="button button--secondary button--danger" onClick={() => onBuyerDecision(false)}>

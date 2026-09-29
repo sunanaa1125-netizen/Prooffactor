@@ -5,6 +5,7 @@
 
 import { Invoice, ActivityItem } from './types';
 import { demoInvoices, initialActivity } from './demo-data';
+import { resetBlockHeight } from './crypto';
 
 const INVOICES_KEY = 'prooffactor.invoices.v1';
 const ACTIVITY_KEY = 'prooffactor.activity.v1';
@@ -61,6 +62,8 @@ export function resetStoredData(): { invoices: Invoice[]; activity: ActivityItem
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(INVOICES_KEY);
     window.localStorage.removeItem(ACTIVITY_KEY);
+    resetBlockHeight();
   }
   return { invoices: demoInvoices, activity: initialActivity };
 }
+
